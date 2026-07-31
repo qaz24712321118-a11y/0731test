@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鮮綠市場 - 線上食材採購</title>
+    <!-- 引入 Tailwind CSS 用於快速構建響應式介面 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 FontAwesome 圖標 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google tag (gtag.js) - 替換為您的 GA4 測量 ID -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JQEE2PLNR8"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-JQEE2PLNR8');
+    </script>
+    <style>
+        /* 隱藏滾動條但保留滾動功能 (針對購物車側邊欄) */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+    <!-- 頂部導航欄 -->
+    <nav class="bg-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex-shrink-0 flex items-center">
+                    <i class="fa-solid fa-leaf text-green-500 text-2xl mr-2"></i>
+                    <span class="font-bold text-xl tracking-tight text-green-700">鮮綠市場</span>
+                </div>
+                
+                <!-- 購物車按鈕 -->
+                <div class="flex items-center">
+                    <button id="cartBtn" class="relative p-2 text-gray-600 hover:text-green-600 transition-colors focus:outline-none" aria-label="查看購物車">
+                        <i class="fa-solid fa-cart-shopping text-xl"></i>
+                        <span id="cartCount" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/4 -translate-y-1/4 bg-red-500 rounded-full hidden">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要內容區 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 class="text-3xl font-bold mb-8 text-center text-gray-800">新鮮到貨</h1>
+        
+        <!-- 商品網格 -->
+        <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <!-- 商品卡片將由 JavaScript 動態生成 -->
+        </div>
+    </main>
+
+    <!-- 購物車側邊欄 (預設隱藏) -->
+    <div id="cartSidebar" class="fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col">
+        <!-- 側邊欄頭部 -->
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                <i class="fa-solid fa-cart-shopping mr-2 text-green-600"></i>
+                您的購物車
+            </h2>
+            <button id="closeCartBtn" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                <i class="fa-solid fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <!-- 購物車內容區 -->
+        <div id="cartItemsContainer" class="flex-1 overflow-y-auto p-6 no-scrollbar space-y-4">
+            <!-- 購物車項目將由 JavaScript 動態生成 -->
+            <div id="emptyCartMsg" class="text-center text-gray-500 py-10">
+                <i class="fa-solid fa-basket-shopping text-4xl mb-4 text-gray-300"></i>
+                <p>購物車是空的，快去選購新鮮食材吧！</p>
+            </div>
+        </div>
+        
+        <!-- 結帳區 -->
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div class="flex justify-between items-center mb-4">
+                <span class="font-semibold text-gray-600">總計：</span>
+                <span id="cartTotal" class="font-bold text-2xl text-green-600">NT$ 0</span>
+            </div>
+            <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded transition-colors duration-200 shadow-md">
+                前往結帳
+            </button>
+        </div>
+    </div>
+
+    <!-- 遮罩層 -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300"></div>
+
+    <!-- 商品詳情 Modal (對話框) -->
+    <div id="productModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <!-- 內部遮罩，點擊關閉 -->
+        <div class="absolute inset-0 bg-black bg-opacity-50 modal-backdrop"></div>
+        
+        <!-- Modal 內容 -->
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full relative z-10 overflow-hidden">
+            <button class="absolute top-2 right-2 text-gray-500 hover:text-gray-800 bg-white rounded-full p-1 focus:outline-none closeModalBtn">
+                <i class="fa-solid fa-times text-xl"></i>
+            </button>
+            
+            <div class="md:flex">
+                <div class="md:w-1/2 h-64 md:h-auto bg-gray-100 relative">
+                    <img id="modalImg" src="" alt="Product" class="w-full h-full object-cover">
+                    <!-- 分類標籤 -->
+                    <span id="modalCategory" class="absolute top-2 left-2 text-xs font-semibold px-2 py-1 bg-green-100 text-green-800 rounded"></span>
+                </div>
+                <div class="p-6 md:w-1/2 flex flex-col justify-between">
+                    <div>
+                        <h3 id="modalTitle" class="text-2xl font-bold text-gray-900 mb-2"></h3>
+                        <p id="modalDesc" class="text-gray-600 text-sm mb-4 line-clamp-3"></p>
+                        <div class="text-2xl font-bold text-green-600 mb-6">
+                            NT$ <span id="modalPrice"></span>
+                        </div>
+                    </div>
+                    
+                    <button id="modalAddToCartBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded shadow flex justify-center items-center transition-colors">
+                        <i class="fa-solid fa-cart-plus mr-2"></i> 加入購物車
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模擬商品資料庫
+        const products = [
+            {
+                id: "P001",
+                name: "在地有機高麗菜",
+                price: 85,
+                category: "蔬菜",
+                brand: "小農契作",
+                description: "來自高海拔農場的有機高麗菜，清脆鮮甜，無農藥殘留，適合熱炒或煮湯。每一口都能品嚐到大地原始的滋味。",
+                image: "https://placehold.co/400x300/4CAF50/FFFFFF?text=Cabbage"
+            },
+            {
+                id: "P002",
+                name: "冷藏挪威鮭魚切片",
+                price: 250,
+                category: "海鮮",
+                brand: "北海漁業",
+                description: "空運直送挪威鮭魚，油脂豐厚，肉質軟嫩。富含Omega-3，適合乾煎、烘烤或生食等級(需確認包裝)。",
+                image: "solomen.jfif"
+            },
+            {
+                id: "P003",
+                name: "放山土雞蛋 (10入)",
+                price: 120,
+                category: "蛋豆類",
+                brand: "快樂農莊",
+                description: "放養於山林間的土雞所產的蛋，蛋黃飽滿橙紅，蛋白濃稠Q彈，營養價值極高。無施打抗生素，安心食用。",
+                image: "egg.jfif"
+            },
+            {
+                id: "P004",
+                name: "特級富士蘋果 (4顆裝)",
+                price: 180,
+                category: "水果",
+                brand: "青森果園",
+                description: "日本青森品種，台灣在地高山種植。果肉爽脆多汁，甜度高達14度，帶有獨特香氣，是健康點心的最佳選擇。",
+                image: "https://placehold.co/400x300/E91E63/FFFFFF?text=Apple"
+            },
+            {
+                id: "P005",
+                name: "非基改生鮮豆包",
+                price: 65,
+                category: "蛋豆類",
+                brand: "古早味豆坊",
+                description: "採用100%非基因改造黃豆每日新鮮手工製作。口感滑嫩，豆香濃郁，是火鍋、滷味不可或缺的食材。",
+                image: "https://placehold.co/400x300/FFEB3B/333333?text=Bean+Curd"
+            },
+            {
+                id: "P006",
+                name: "澳洲頂級沙朗牛排",
+                price: 380,
+                category: "肉類",
+                brand: "澳客鮮肉",
+                description: "嚴選澳洲草飼牛，油花分布均勻，肉質鮮嫩多汁，只需簡單的海鹽與黑胡椒調味，即可享受極致美味。",
+                image: "https://placehold.co/400x300/795548/FFFFFF?text=Beef+Steak"
+            }
+        ];
+
+        // 購物車狀態
+        let cart = [];
+        // 用於記錄當前查看的商品 (為了在 Modal 中加入購物車時使用)
+        let currentViewedProduct = null;
+
+        // DOM 元素
+        const productGrid = document.getElementById('productGrid');
+        const cartBtn = document.getElementById('cartBtn');
+        const closeCartBtn = document.getElementById('closeCartBtn');
+        const cartSidebar = document.getElementById('cartSidebar');
+        const overlay = document.getElementById('overlay');
+        const cartItemsContainer = document.getElementById('cartItemsContainer');
+        const emptyCartMsg = document.getElementById('emptyCartMsg');
+        const cartTotalDisplay = document.getElementById('cartTotal');
+        const cartCountDisplay = document.getElementById('cartCount');
+        
+        // Modal DOM 元素
+        const productModal = document.getElementById('productModal');
+        const modalBackdrops = document.querySelectorAll('.modal-backdrop, .closeModalBtn');
+        const modalImg = document.getElementById('modalImg');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalCategory = document.getElementById('modalCategory');
+        const modalDesc = document.getElementById('modalDesc');
+        const modalPrice = document.getElementById('modalPrice');
+        const modalAddToCartBtn = document.getElementById('modalAddToCartBtn');
+
+        // 渲染商品列表
+        function renderProducts() {
+            productGrid.innerHTML = '';
+            products.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full group';
+                
+                card.innerHTML = `
+                    <div class="relative h-48 overflow-hidden cursor-pointer" onclick="openProductModal('${product.id}')">
+                        <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300">
+                        <span class="absolute top-2 right-2 bg-white px-2 py-1 text-xs font-bold text-gray-700 rounded shadow">${product.category}</span>
+                    </div>
+                    <div class="p-4 flex flex-col flex-grow">
+                        <h3 class="text-lg font-bold text-gray-800 mb-1 cursor-pointer hover:text-green-600 transition-colors" onclick="openProductModal('${product.id}')">${product.name}</h3>
+                        <p class="text-gray-500 text-sm mb-3 line-clamp-2 flex-grow">${product.description}</p>
+                        <div class="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
+                            <span class="text-xl font-bold text-green-600">NT$ ${product.price}</span>
+                            <button onclick="addToCart('${product.id}')" class="bg-green-100 text-green-700 hover:bg-green-500 hover:text-white p-2 rounded-full transition-colors focus:outline-none" aria-label="加入購物車">
+                                <i class="fa-solid fa-cart-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                productGrid.appendChild(card);
+            });
+        }
+
+        // 輔助函數：根據 ID 獲取商品資訊並格式化為 GA4 item 格式
+        function getGA4ItemFormat(product, quantity = 1) {
+            return {
+                item_id: product.id,
+                item_name: product.name,
+                item_category: product.category,
+                item_brand: product.brand,
+                price: product.price,
+                quantity: quantity
+            };
+        }
+
+        // 1. GA4 事件：查看商品 (view_item)
+        function trackViewItem(product) {
+            console.log(`GA4 Event: view_item - ${product.name}`);
+            gtag('event', 'view_item', {
+                currency: 'TWD',
+                value: product.price,
+                items: [getGA4ItemFormat(product)]
+            });
+        }
+
+        // 2. GA4 事件：加入購物車 (add_to_cart)
+        function trackAddToCart(product, quantity = 1) {
+            console.log(`GA4 Event: add_to_cart - ${product.name}`);
+            gtag('event', 'add_to_cart', {
+                currency: 'TWD',
+                value: product.price * quantity,
+                items: [getGA4ItemFormat(product, quantity)]
+            });
+        }
+
+        // 3. GA4 事件：看購物車 (view_cart)
+        function trackViewCart() {
+            console.log('GA4 Event: view_cart');
+            
+            // 計算購物車總價值
+            const totalValue = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            // 將購物車內容格式化為 GA4 items 陣列
+            const items = cart.map(item => getGA4ItemFormat(item, item.quantity));
+
+            gtag('event', 'view_cart', {
+                currency: 'TWD',
+                value: totalValue,
+                items: items
+            });
+        }
+
+        // 4. GA4 事件：從購物車移出 (remove_from_cart)
+        function trackRemoveFromCart(product, quantity = 1) {
+            console.log(`GA4 Event: remove_from_cart - ${product.name}`);
+            gtag('event', 'remove_from_cart', {
+                currency: 'TWD',
+                value: product.price * quantity,
+                items: [getGA4ItemFormat(product, quantity)]
+            });
+        }
+
+        // 打開商品詳情 Modal
+        function openProductModal(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            currentViewedProduct = product;
+
+            // 填充 Modal 內容
+            modalImg.src = product.image;
+            modalImg.alt = product.name;
+            modalCategory.textContent = product.category;
+            modalTitle.textContent = product.name;
+            modalDesc.textContent = product.description;
+            modalPrice.textContent = product.price;
+            
+            // 設定加入購物車按鈕的事件
+            modalAddToCartBtn.onclick = () => {
+                addToCart(product.id);
+                // 顯示簡單的回饋效果 (可選)
+                modalAddToCartBtn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> 已加入';
+                modalAddToCartBtn.classList.replace('bg-green-500', 'bg-gray-500');
+                setTimeout(() => {
+                    modalAddToCartBtn.innerHTML = '<i class="fa-solid fa-cart-plus mr-2"></i> 加入購物車';
+                    modalAddToCartBtn.classList.replace('bg-gray-500', 'bg-green-500');
+                    closeModal(); // 可選擇加入後自動關閉
+                }, 1000);
+            };
+
+            // 顯示 Modal
+            productModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滾動
+
+            // 觸發 GA4 檢視商品事件
+            trackViewItem(product);
+        }
+
+        // 關閉商品詳情 Modal
+        function closeModal() {
+            productModal.classList.add('hidden');
+            document.body.style.overflow = '';
+            currentViewedProduct = null;
+        }
+
+        // 綁定關閉 Modal 事件
+        modalBackdrops.forEach(backdrop => {
+            backdrop.addEventListener('click', closeModal);
+        });
+
+        // 加入購物車功能
+        window.addToCart = function(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            // 檢查是否已在購物車中
+            const existingItem = cart.find(item => item.id === productId);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                // 如果是新項目，加入到陣列中
+                cart.push({
+                    ...product,
+                    quantity: 1
+                });
+            }
+
+            // 更新 UI
+            updateCartUI();
+            
+            // 觸發 GA4 加入購物車事件
+            trackAddToCart(product, 1);
+            
+            // 視覺回饋：如果側邊欄沒開，可以稍微晃動購物車圖標
+            if (cartSidebar.classList.contains('translate-x-full')) {
+                cartBtn.classList.add('animate-bounce');
+                setTimeout(() => cartBtn.classList.remove('animate-bounce'), 1000);
+            }
+        };
+
+        // 從購物車移除或減少數量
+        window.removeFromCart = function(productId, completelyRemove = false) {
+            const itemIndex = cart.findIndex(item => item.id === productId);
+            if (itemIndex === -1) return;
+
+            const item = cart[itemIndex];
+            
+            if (completelyRemove || item.quantity === 1) {
+                // 完全移除
+                cart.splice(itemIndex, 1);
+                trackRemoveFromCart(item, item.quantity);
+            } else {
+                // 減少數量
+                item.quantity -= 1;
+                trackRemoveFromCart(item, 1);
+            }
+
+            updateCartUI();
+        };
+
+        // 增加購物車內商品數量
+        window.increaseQuantity = function(productId) {
+            const item = cart.find(item => item.id === productId);
+            if (item) {
+                item.quantity += 1;
+                updateCartUI();
+                // 增加數量也算是一次 add_to_cart
+                trackAddToCart(item, 1);
+            }
+        }
+
+        // 更新購物車 UI
+        function updateCartUI() {
+            // 更新圖標上的數量
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            if (totalItems > 0) {
+                cartCountDisplay.textContent = totalItems;
+                cartCountDisplay.classList.remove('hidden');
+            } else {
+                cartCountDisplay.classList.add('hidden');
+            }
+
+            // 計算總價
+            const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            cartTotalDisplay.textContent = `NT$ ${totalPrice}`;
+
+            // 重新渲染購物車列表
+            // 保留 empty message 元素，清除其他商品元素
+            const elementsToRemove = cartItemsContainer.querySelectorAll('.cart-item');
+            elementsToRemove.forEach(el => el.remove());
+
+            if (cart.length === 0) {
+                emptyCartMsg.classList.remove('hidden');
+            } else {
+                emptyCartMsg.classList.add('hidden');
+                
+                // 生成購物車商品 HTML
+                cart.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'cart-item flex items-center justify-between p-3 bg-white rounded shadow-sm border border-gray-100';
+                    itemDiv.innerHTML = `
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <img src="${item.image}" alt="${item.name}" class="w-12 h-12 object-cover rounded">
+                            <div class="truncate">
+                                <h4 class="text-sm font-semibold text-gray-800 truncate">${item.name}</h4>
+                                <div class="text-sm font-bold text-green-600">NT$ ${item.price}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex items-center border border-gray-300 rounded bg-gray-50">
+                                <button onclick="removeFromCart('${item.id}')" class="px-2 py-1 text-gray-600 hover:text-red-500 focus:outline-none">
+                                    <i class="fa-solid fa-minus text-xs"></i>
+                                </button>
+                                <span class="px-2 text-sm font-medium w-6 text-center">${item.quantity}</span>
+                                <button onclick="increaseQuantity('${item.id}')" class="px-2 py-1 text-gray-600 hover:text-green-500 focus:outline-none">
+                                    <i class="fa-solid fa-plus text-xs"></i>
+                                </button>
+                            </div>
+                            <button onclick="removeFromCart('${item.id}', true)" class="text-gray-400 hover:text-red-500 focus:outline-none p-1" title="移除商品">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    cartItemsContainer.insertBefore(itemDiv, emptyCartMsg); // 插入在空訊息之前
+                });
+            }
+        }
+
+        // 開啟購物車側邊欄
+        function openCart() {
+            cartSidebar.classList.remove('translate-x-full');
+            overlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滾動
+            
+            // 觸發 GA4 檢視購物車事件
+            trackViewCart();
+        }
+
+        // 關閉購物車側邊欄
+        function closeCart() {
+            cartSidebar.classList.add('translate-x-full');
+            overlay.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // 綁定事件監聽器
+        cartBtn.addEventListener('click', openCart);
+        closeCartBtn.addEventListener('click', closeCart);
+        overlay.addEventListener('click', () => {
+            closeCart();
+            closeModal();
+        });
+
+        // 頁面加載完成後初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            renderProducts();
+            
+            // 可選：可以觸發一個 view_item_list 事件 (GA4 建議的電商事件)，這裡先省略以專注於您要求的四個事件
+        });
+
+    </script>
+</body>
+</html>
